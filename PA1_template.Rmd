@@ -1,0 +1,80 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+
+---
+
+
+## Loading and preprocessing the data
+
+activity <- read.csv("activity.csv", stringsAsFactors=FALSE)
+
+## What is mean total number of steps taken per day?
+
+totalPerDay <- aggregate(steps ~ date, activity, sum)
+print(head(totalPerDay))
+
+## What is the average daily activity pattern?
+averagePerInterval <- aggregate(steps ~ interval, activity, mean)
+print(head(averagePerInterval))
+
+Sys.setlocale("LC_ALL", "English")
+## What is mean total number of steps taken per day?
+plot(averagePerInterval$interval, averagePerInterval$steps,
+     type="l", frame=FALSE, col="blue",
+     main="Average daily activity",
+     xlab="5-minute interval", ylab="Average number of steps")
+     
+     maxStepsCount <- which.max(averagePerInterval$steps)
+maxInterval <- averagePerInterval[maxStepsCount,]$interval
+#Imputing missing values
+
+missedCasesCount <- sum(is.na(activity$steps))
+print(missedCasesCount)
+
+totalObservationPerDay <- length(unique(activity$interval))
+print(totalObservationPerDay)
+missedObservationsCountPerDay <- aggregate(steps ~ date, activity, function(x){sum(is.na(x))}, na.action=na.pass)
+colnames(missedObservationsCountPerDay) <- c("date", "missedObservationsCount")
+print(missedObservationsCountPerDay)
+
+
+filledActivity <- activity
+missingDates <- unique(subset(activity,is.na(steps))$date)
+for (date in missingDates)
+  filledActivity[filledActivity$date==date,]$steps <- round(averagePerInterval$steps)
+
+print(head(filledActivity,15))
+
+
+newTotalPerDay <- aggregate(steps ~ date, filledActivity, sum)
+par(mfrow=c(1,2))
+hist(totalPerDay$steps, breaks=200, col="green", ylim=c(0,9),
+     main="Before filling missed values", xlab="Total steps' per day")
+hist(newTotalPerDay$steps, breaks=200, col="green", ylim=c(0,9),
+     main="After filling missed values", xlab="Total steps' per day")
+     
+     
+     newMeanByDay <- mean(newTotalPerDay$steps)
+newMedianByDay <- median(newTotalPerDay$steps)
+
+#Are there differences in activity patterns between weekdays and weekends?
+
+
+weekendObservation <- weekdays(as.Date(filledActivity$date)) %in% c("Saturday","Sunday")
+filledActivity$partOfWeek <- ifelse(weekendObservation, "weekend", "weekday")
+
+averageWeekDayPattern <- aggregate(steps ~ interval, subset(filledActivity, partOfWeek=="weekday"), mean)
+print(head(averageWeekDayPattern))
+averageWeekEndPattern <- aggregate(steps ~ interval, subset(filledActivity, partOfWeek=="weekend"), mean)
+print(head(averageWeekEndPattern))
+
+
+
+par(mfrow=c(2,1))
+plot(x=averageWeekDayPattern$interval, y=averageWeekDayPattern$steps,
+     main="Average number of steps at weekday", xlab="5-minute interval's number", ylab="",
+     type='l', ylim=c(0,200), frame=FALSE)
+plot(x=averageWeekEndPattern$interval, y=averageWeekEndPattern$steps,
+     main="Average number of steps at weekend", xlab="5-minute interval's number", ylab="",
+     type='l', ylim=c(0,200), frame=FALSE)
+
